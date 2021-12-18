@@ -1,47 +1,48 @@
-#!/bin/sh
+#!/usr/bin/env arch -x86_64 bash
 
 WINESKIN_TARGET_NAME="template_xiv_working.app"
 
-wrapperWine=""
-winetricks=""
-prefix=""
+export wineWrappers="${PWD}/${WINESKIN_TARGET_NAME}/Wineskin.app/Contents/Resources"
+export winePATH="${PWD}/${WINESKIN_TARGET_NAME}/Contents/SharedSupport/wine/bin"
+export PATH="${wineWrappers}:${winePATH}:${PATH}"
+export WINEDEBUG="-all"
 
-function boot() {
-	wrapperWine="$PWD/template_xiv_working.app/Contents/SharedSupport/wine/bin"
-	export PATH="$PATH:$wrapperWine"
+# Workaround SIP DYLD_stripping
+# See https://support.apple.com/en-us/HT204899
+# See https://github.com/Winetricks/winetricks/pull/1820
+export WINETRICKS_FALLBACK_LIBRARY_PATH="${PWD}/${WINESKIN_TARGET_NAME}/Contents/Frameworks"
+export DYLD_FALLBACK_LIBRARY_PATH="${WINETRICKS_FALLBACK_LIBRARY_PATH}"
 
-	winetricks="$PWD/template_xiv_working.app/Wineskin.app/Contents/Resources/winetricks"
-
-	prefix="$PWD/template_xiv_working.app/Contents/Resources"
-	export WINEPREFIX=$prefix
-}
+export WINEPREFIX="${PWD}/${WINESKIN_TARGET_NAME}/Contents/Resources"
 
 function install_deps() {
-	$winetricks dotnet40
-	$winetricks dotnet40_kb2468871
-	$winetricks dotnet472
-	$winetricks vcrun2015
-	$winetricks vcrun2012
-	$winetricks vcrun2010
-	#$winetricks corefonts
+    echo "===> Installing dotnet48"
+	winetricks -q -f dotnet48 &>/dev/null
+    echo "===> Installing vcrun2015"
+	winetricks -q vcrun2015 &>/dev/null
+    echo "===> Installing vcrun2012"
+	winetricks -q vcrun2012 &>/dev/null
+    echo "===> Installing vcrun2010"
+	winetricks -q vcrun2010 &>/dev/null
+	#winetricks corefonts
 }
 
 echo "==> Removing Gatekeeper quarantine from downloaded wrapper. You may need to enter your password."
-sudo xattr -r -d com.apple.quarantine "$PWD/$WINESKIN_TARGET_NAME" &>/dev/null
+sudo xattr -drs com.apple.quarantine "${PWD}/${WINESKIN_TARGET_NAME}" &>/dev/null
 
-echo "==> Start bootstrap of the Wine environment."
-boot
-echo "==> Try to validate the bootstrap."
-$winetricks list-installed &>/dev/null
+echo "==> Verifying winetricks is installed within wrapper."
+${PWD}/${WINESKIN_TARGET_NAME}/Wineskin.app/Contents/Resources/winetricks list-installed &>/dev/null
 isWorkingEnv=$?
 
 if [ "$isWorkingEnv" != "0" ]; then
-	echo "==> Could not validate that the Wine environment is working correctly, sorry."
-	exit 1;
+    echo "==> Could not find winetricks, downloading."
+    curl -o ${PWD}/${WINESKIN_TARGET_NAME}/Wineskin.app/Contents/Resources/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks &>/dev/null
+    chmod +x ${PWD}/${WINESKIN_TARGET_NAME}/Wineskin.app/Contents/Resources/winetricks &>/dev/null
 fi
-
-echo "==> Finished bootstrapping the Wine environment."
 
 echo "==> Installing proprietary dependencies..."
 install_deps
 echo "==> Finished installing dependencies."
+
+echo "==> Launching explorer"
+wine explorer
