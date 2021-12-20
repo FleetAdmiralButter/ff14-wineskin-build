@@ -32,7 +32,7 @@ echo "==> Removing Gatekeeper quarantine from downloaded wrapper. You may need t
 sudo xattr -drs com.apple.quarantine "${PWD}/${WINESKIN_TARGET_NAME}" &>/dev/null
 
 echo "==> Verifying winetricks is installed within wrapper."
-${PWD}/${WINESKIN_TARGET_NAME}/Wineskin.app/Contents/Resources/wineskin list-installed &>/dev/null
+${PWD}/${WINESKIN_TARGET_NAME}/Wineskin.app/Contents/Resources/winetricks list-installed &>/dev/null
 isWorkingEnv=$?
 
 if [ "$isWorkingEnv" != "0" ]; then
